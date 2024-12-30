@@ -1,0 +1,111 @@
+---
+- name: Download and Install Prometheus Node Exporter
+  hosts: localhost
+  become: yes
+
+  vars:
+    prometheus_jobs:
+      - job_name: "qwerty-Server12"
+        scrape_interval: "15s"
+        static_configs:
+          - targets:
+              - "45.79.120.8:9100"
+
+  tasks:
+    - name: Load data from prometheus.yml
+      ansible.builtin.include_vars:
+        file: /etc/prometheus/prometheus.yml
+      register: prometheus_config
+      delegate_to: monitoring_new
+
+    - name: Debug prometheus_config
+      ansible.builtin.debug:
+        var: prometheus_config
+      delegate_to: monitoring_new
+
+    - name: Get latest Node Exporter URL
+      ansible.builtin.shell:
+        cmd: curl -s https://api.github.com/repos/prometheus/node_exporter/releases/latest | grep "browser_download_url.*linux-amd64" | cut -d '"' -f 4
+      register: node_exporter_url
+      delegate_to: monitoring_new
+
+    - name: Download Prometheus Node Exporter
+      ansible.builtin.get_url:
+        url: "{{ node_exporter_url.stdout }}"
+        dest: /tmp/node_exporter.tar.gz
+      delegate_to: monitoring_new
+
+    - name: Ensure node_exporter.tar.gz exists
+      ansible.builtin.stat:
+        path: /tmp/node_exporter.tar.gz
+      register: node_exporter_stat
+      failed_when: false
+      changed_when: false
+      delegate_to: monitoring_new
+
+    - name: Extract Node Exporter archive
+      ansible.builtin.unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /usr/local/bin
+        creates: /usr/local/bin/node_exporter-1.2.3.linux-amd64/node_exporter
+        remote_src: yes
+      when: node_exporter_stat.stat.exists
+      delegate_to: monitoring_new
+
+    - name: Remove temporary files
+      ansible.builtin.file:
+        path: /tmp/node_exporter.tar.gz
+        state: absent
+      delegate_to: monitoring_new
+
+    - name: Create systemd service for Node Exporter
+      ansible.builtin.template:
+        src: /etc/ansible/playbooks/templates/node_exporter.service.j2
+        dest: /etc/systemd/system/node_exporter.service
+      notify:
+        - Restart Node Exporter
+      delegate_to: monitoring_new
+
+    - name: Allow incoming traffic on Prometheus ports using ufw
+      ansible.builtin.command:
+        cmd: "ufw allow 9100"
+      become: yes
+      delegate_to: monitoring_new
+
+    - name: Ensure scrape_configs section exists
+      lineinfile:
+        path: /etc/prometheus/prometheus.yml
+        regexp: '^scrape_configs:'
+        line: 'scrape_configs:'
+        insertbefore: '^scrape_configs:'
+        state: present
+      delegate_to: monitoring_new
+
+    - name: Add new scrape job
+      blockinfile:
+        path: /etc/prometheus/prometheus.yml
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - JOB: {{ item.job_name }}"
+        block: |
+            - job_name: "{{ item.job_name }}"
+              scrape_interval: "{{ item.scrape_interval }}"
+              static_configs:
+                - targets:
+                    {% for target in item.static_configs[0].targets %}
+                    - "{{ target }}"
+                    {% endfor %}
+      with_items: "{{ prometheus_jobs }}"
+      when: prometheus_jobs | length > 0
+      delegate_to: monitoring_new
+
+  handlers:
+    - name: Restart Node Exporter
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: restarted
+
+    - name: Reload Prometheus
+      ansible.builtin.systemd:
+        name: prometheus
+        state: restarted
+
+
