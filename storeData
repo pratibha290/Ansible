@@ -1,0 +1,31 @@
+---
+- name: storing cmd data in db
+  hosts: localhost
+  become: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Run df -kh cmd
+      command: df -kh
+      register: cmd_output
+
+    - name: Debug cmd_output
+      debug:
+        var: item
+      with_items: "{{ cmd_output.stdout_lines[1:] }}"
+
+    - name: Insert df -kh output into MySQL database
+      community.mysql.mysql_query:
+        login_user: pratibha
+        login_password: pratibha
+        login_host: 172.105.61.181
+        login_db: db_pratibha
+        login_port: 3306
+        query: >
+          INSERT INTO cmd_output (Filesystem, Size, Used, Avail, `Use percentage`, `Mounted on`)
+          VALUES ('{{ item.split()[0] }}', '{{ item.split()[1] }}', '{{ item.split()[2] }}', '{{ item.split()[3] }}', '{{ item.split()[4] }}', '{{ item.split()[5] }}');
+      loop: "{{ cmd_output.stdout_lines[1:] }}"
+
+    - name: Print file listing
+      debug:
+        var: cmd_output.stdout_lines
