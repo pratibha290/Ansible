@@ -1,0 +1,21 @@
+---
+- name: storing cmd data in db
+  hosts: all
+  become: true
+  vars:
+    ansible_python_interpreter:  /usr/bin/python3
+  tasks:
+    - name: Fetch unique URL from Apache config
+      shell: "cat /etc/apache2/sites-enabled/*.conf | grep '<VirtualHost' | awk '{split($2, arr, \":\"); print arr[1]}' | uniq"
+      register: cmd_output
+
+    - name: Insert output into MySQL database
+      community.mysql.mysql_query:
+        login_user: ansible
+        login_password: Ansible@!234
+        login_host: 194.195.118.35
+        login_db: itportal
+        login_port: 3306
+        query: "INSERT INTO url (added_by, url) VALUES ('30', '{{ item }}')"
+      loop: "{{ cmd_output.stdout_lines }}"
+      delegate_to: localhost
