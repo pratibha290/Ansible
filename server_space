@@ -1,0 +1,14 @@
+---
+- name: Get disk usage information
+  hosts: all
+  tasks:
+    - name: Run df command and parse with awk
+      ansible.builtin.shell: df -kh /dev/sda | awk 'NR==2 {print "Used:", $3, "Available:", $4, "Total:", $2}'
+      register: df_output
+      changed_when: false  # Since this task is read-only, we mark it as non-changing
+
+    - name: Print parsed disk usage with hostname
+      debug:
+        msg: |
+          Hostname: {{ inventory_hostname }}
+          {{ df_output.stdout }}
