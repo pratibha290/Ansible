@@ -1,0 +1,15 @@
+---
+- name: Check if Apache is running
+  hosts: all
+  become: true  # Run tasks with sudo/root privileges
+
+  tasks:
+    - name: Check Apache service status
+      systemd:
+        name: apache2  # Replace with 'httpd' for CentOS, Fedora, RHEL, etc.
+        state: started
+      register: apache_status
+
+    - name: Print Apache service status
+      debug:
+        msg: "Apache is {{ 'running' if apache_status.state == 'started' else 'not running' }}"
