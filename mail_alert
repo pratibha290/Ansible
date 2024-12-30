@@ -1,0 +1,46 @@
+ansible@anurag:/etc/ansible/playbooks$ cat mail_alert.yml
+---
+- name: Sending an e-mail if file size exceeds 1GB
+  hosts: all
+
+  tasks:
+    - name: Find files larger than 1GB
+      shell: find / -type f -size +1G -exec ls -lh {} + | awk '{print $5, $9}'
+      register: large_files
+      ignore_errors: true  # Ignore errors to prevent playbook failure if access issues occur
+
+    - name: Get current date and time
+      shell: date +"%Y-%m-%d %H:%M:%S"
+      register: current_datetime
+
+    - name: Sending email notification if large files found
+      when: large_files.stdout_lines | length > 0
+      community.general.mail:
+        host: mail.proeffico.email  # Update with your SMTP server hostname
+        port: 465  # Update with your SMTP server port
+        username: prabhat@proeffico.com  # Update with your email credentials
+        password: Prabhat@!234  # Update with your email password
+        from: prabhat@proeffico.com
+        to: pratibha@proeffico.com  # Update with recipient's email address
+        subject: "Alert: File System Change Detected outside CA window"
+        body: |
+          Dear User,
+
+          This is an automated notification to inform you that one or more files larger than 1GB have been detected on the server.
+
+          Files:
+          {% for line in large_files.stdout_lines %}
+          - {{ line }}
+          {% endfor %}
+
+          Please review and manage these files accordingly.
+
+          Regards,
+          Your IT Team
+
+        secure: starttls  # Use 'starttls' for SMTP servers using STARTTLS
+
+      environment:
+        ANSIBLE_HOST_KEY_CHECKING: "False"  # To avoid host key checking prompt
+
+      delegate_to: localhost  # Send email from the Ansible control machine
