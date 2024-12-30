@@ -1,0 +1,13 @@
+---
+- name: Get list of all services running on server
+  hosts: all
+  become: true  # Run tasks with sudo/root privileges
+
+  tasks:
+    - name: Get list of all services
+      shell: systemctl list-units --type=service --all --no-pager --plain | awk '{print $1}'
+      register: services_list
+
+    - name: Print list of services
+      debug:
+        msg: "List of services: {{ services_list.stdout_lines }}"
