@@ -1,0 +1,21 @@
+---
+- name: Get list of cron jobs running on server
+  hosts: all
+  become: true  # Run tasks with sudo/root privileges
+
+  tasks:
+    - name: Get cron jobs for all users
+      command: crontab -l
+      register: cron_jobs_all
+
+    - name: Print cron jobs for all users
+      debug:
+        msg: "Cron jobs for all users: {{ cron_jobs_all.stdout }}"
+
+    - name: Get cron jobs for root user
+      command: crontab -l -u root
+      register: cron_jobs_root
+
+    - name: Print cron jobs for root user
+      debug:
+        msg: "Cron jobs for root user: {{ cron_jobs_root.stdout }}"
