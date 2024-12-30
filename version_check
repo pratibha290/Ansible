@@ -1,0 +1,56 @@
+---
+- name: Get versions of common tools on server
+  hosts: all
+  become: true  # Run tasks with sudo/root privileges
+
+  tasks:
+    - name: Check MySQL version
+      command: mysql --version
+      register: mysql_version
+      ignore_errors: yes
+
+    - name: Print MySQL version
+      debug:
+        msg: "MySQL version: {{ mysql_version.stdout }}"
+      when: mysql_version.rc == 0
+
+    - name: Check PHP version
+      command: php --version
+      register: php_version
+      ignore_errors: yes
+
+    - name: Print PHP version
+      debug:
+        msg: "PHP version: {{ php_version.stdout }}"
+      when: php_version.rc == 0
+
+    - name: Check Node.js version
+      command: node --version
+      register: node_version
+      ignore_errors: yes
+
+    - name: Print Node.js version
+      debug:
+        msg: "Node.js version: {{ node_version.stdout }}"
+      when: node_version.rc == 0
+
+    - name: Check MariaDB version
+      command: mariadb --version
+      register: mariadb_version
+      ignore_errors: yes
+
+    - name: Print MariaDB version
+      debug:
+        msg: "MariaDB version: {{ mariadb_version.stdout }}"
+      when: mariadb_version.rc == 0
+
+    - name: Check Redis version
+      command: redis-server --version
+      register: redis_version
+      ignore_errors: yes
+
+    - name: Print Redis version
+      debug:
+        msg: "Redis version: {{ redis_version.stdout }}"
+      when: redis_version.rc == 0
+
