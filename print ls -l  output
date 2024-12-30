@@ -1,0 +1,14 @@
+# saved as newFile.yml
+---
+- name: List files on localhost
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Execute ls -l command
+      command: ls -l
+      register: file_listing
+
+    - name: Print file listing
+      debug:
+        var: file_listing.stdout_lines
