@@ -1,0 +1,12 @@
+---
+- name: Get List of Open Ports Playbook
+  hosts: all  # Replace with your target server group or hostname
+
+  tasks:
+    - name: Get open ports using netstat
+      ansible.builtin.shell: netstat -tuln | grep 'LISTEN'
+      register: open_ports_output
+
+    - name: Print open ports
+      debug:
+        msg: "{{ open_ports_output.stdout_lines }}"
